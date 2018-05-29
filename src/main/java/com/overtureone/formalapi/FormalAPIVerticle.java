@@ -132,9 +132,10 @@ public class FormalAPIVerticle extends AbstractVerticle {
 
     private void updateProductsByID(RoutingContext routingContext) {
 
+        String id = routingContext.request().getParam("id");
+
         //Get the JSON body
         JsonObject jsonBody = routingContext.getBodyAsJson();
-        String id = jsonBody.getString("number");
         String desc = jsonBody.getString("description");
 
         //Find the item
