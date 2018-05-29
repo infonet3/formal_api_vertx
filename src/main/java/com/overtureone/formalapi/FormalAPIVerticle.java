@@ -199,26 +199,12 @@ public class FormalAPIVerticle extends AbstractVerticle {
         //Get the parameter
         final String productID = routingContext.request().getParam("id");
 
-        Product product = null;
-        for (int i = 0; i < listProducts.size(); i++) {
-            if (listProducts.get(i).getNumber().equals(productID)) {
-                listProducts.remove(i);
-            }
-        }
+        listProducts.removeIf(p -> p.getNumber().equals(productID));
 
-        //Did we find the product
-        if (product != null) {
-            routingContext.response()
-                    .setStatusCode(200)
-                    .putHeader("content-type", "application/json")
-                    .end();
-        }
-        else {
-            routingContext.response()
-                    .setStatusCode(400)
-                    .putHeader("content-type", "application/json")
-                    .end();
-        }
+        routingContext.response()
+                .setStatusCode(200)
+                .putHeader("content-type", "application/json")
+                .end();
 
     }
 }
