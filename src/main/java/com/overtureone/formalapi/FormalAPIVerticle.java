@@ -5,6 +5,7 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -53,6 +54,7 @@ public class FormalAPIVerticle extends AbstractVerticle {
 
         //API Routing
         Router router = Router.router(vertx);
+        router.route("/api*").handler(this::defaultProcessorForAllAPI);
         router.route("/api/v1/products*").handler(BodyHandler.create()); //Ensures JSON Bodies in POST and PUTs work
 
         router.get("/api/v1/products").handler(this::getAllProducts);
@@ -63,13 +65,43 @@ public class FormalAPIVerticle extends AbstractVerticle {
 
         //Setup the Server
         router.route().handler(StaticHandler.create().setCachingEnabled(false));
-        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port"));
+        vertx.createHttpServer().requestHandler(router::accept).listen(config().getInteger("http.port"), asyncResult -> {
+            if (asyncResult.succeeded()) {
+                LOGGER.info("HTTP server running on port " + config().getInteger("http.port"));
+            }
+            else {
+                LOGGER.error("Could not start a HTTP server", asyncResult.cause());
+            }
+        });
     }
 
     @Override
     public void stop() {
         LOGGER.info("Verticle Stopped");
 
+    }
+
+    //Called for ALL API Operations
+    private void defaultProcessorForAllAPI(RoutingContext routingContext) {
+
+        String authToken = routingContext.request().headers().get("AuthToken");
+
+        if (authToken == null || !authToken.equals("123")) {
+            LOGGER.info("Failed basic auth check");
+
+            routingContext.response()
+                    .setStatusCode(401)
+                    .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                    .end(Json.encodePrettily(new JsonObject().put("error", "Not Authorized to use APIs")));
+        }
+        else {
+            LOGGER.info("Passed basic auth check");
+
+            routingContext.response().putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+            routingContext.response().putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET,POST,PUT,DELETE");
+
+            routingContext.next(); //Call the next matching route
+        }
     }
 
     //Methods to support all REST calls--------------------------------------------------------------------------
